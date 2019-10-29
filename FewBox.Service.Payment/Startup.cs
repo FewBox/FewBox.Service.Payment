@@ -52,7 +52,21 @@ namespace FewBox.Service.Payment
             services.AddScoped<IPaymentLogService, PaymentLogService>();
             services.AddScoped<IExceptionHandler, ConsoleExceptionHandler>(); // Todo: Change to remote log service.
             services.AddScoped<ITraceHandler, ConsoleTraceHandler>(); // Todo: Change to remote log service.
-            services.AddCors();
+            services.AddCors(
+                options =>
+                {
+                    options.AddDefaultPolicy(
+                        builder =>
+                        {
+                            builder.SetIsOriginAllowedToAllowWildcardSubdomains().WithOrigins("https://fewbox.com").AllowAnyMethod().AllowAnyHeader();
+                        });
+                    options.AddPolicy("all",
+                        builder =>
+                        {
+                            builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                        });
+
+                });
             services.AddOpenApiDocument(config => {
                 config.PostProcess = document =>
                 {
@@ -89,19 +103,21 @@ namespace FewBox.Service.Payment
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+            
             app.UseStaticFiles();
             app.UseSwagger();
             if (env.IsDevelopment() || env.IsStaging())  
             {
-                app.UseSwagger();  
+                app.UseCors("all");
                 app.UseSwaggerUi3();  
             }
             else
             {
+                app.UseCors("all");
                 app.UseReDoc();
             }
             app.UseCors();
+            app.UseMvc();
         }
     }
 }
