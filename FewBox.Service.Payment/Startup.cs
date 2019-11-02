@@ -106,10 +106,10 @@ namespace FewBox.Service.Payment
             // Used for Application.
             
             // Used for Exception&Log AOP.
-            // services.AddScoped<IExceptionHandler, ConsoleExceptionHandler>();
-            // services.AddScoped<ITraceHandler, ConsoleTraceHandler>();
+            // services.AddScoped<ILogHandler, ConsoleLogHandler>();
+            // services.AddScoped<INotificationHandler, ConsoleNotificationHandler>();
             services.AddScoped<ILogHandler, ServiceLogHandler>();
-            services.AddScoped<INotificationHandler, ConsoleNotificationHandler>();
+            services.AddScoped<INotificationHandler, ServiceNotificationHandler>();
             services.AddScoped<ITryCatchService, TryCatchService>();
             // Used for IHttpContextAccessor&IActionContextAccessor context.
             services.AddHttpContextAccessor();
