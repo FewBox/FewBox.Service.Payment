@@ -20,13 +20,13 @@ namespace FewBox.Service.Payment.Controllers
     public class PaypalController : ControllerBase
     {
         private PaypalConfig PaypalConfig { get; set; }
-        private IExceptionProcessorService ExceptionProcessorService { get; set; }
+        private ITryCatchService TryCatchService { get; set; }
         private NotificationConfig NotificationConfig { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, IExceptionProcessorService exceptionProcessorService, NotificationConfig notificationConfig)
+        public PaypalController(PaypalConfig paypalConfig, ITryCatchService tryCatchService, NotificationConfig notificationConfig)
         {
             this.PaypalConfig = paypalConfig;
-            this.ExceptionProcessorService = exceptionProcessorService;
+            this.TryCatchService = tryCatchService;
             this.NotificationConfig = notificationConfig;
         }
 
@@ -73,7 +73,7 @@ namespace FewBox.Service.Payment.Controllers
         {
             Task.Run(() =>
             {
-                this.ExceptionProcessorService.TryCatchInConsole(() =>
+                this.TryCatchService.TryCatchWithoutNotification(() =>
                 {
                     RestfulUtility.Post<NotificationRequestDto, NotificationResponseDto>($"{this.NotificationConfig.Protocol}://{this.NotificationConfig.Host}:{this.NotificationConfig.Port}/api/notification", new Package<NotificationRequestDto>
                     {

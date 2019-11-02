@@ -5,6 +5,8 @@ using FewBox.Core.Utility.Net;
 using FewBox.Core.Web.Config;
 using FewBox.Core.Web.Error;
 using FewBox.Core.Web.Filter;
+using FewBox.Core.Web.Log;
+using FewBox.Core.Web.Notification;
 using FewBox.Core.Web.Token;
 using FewBox.Service.Payment.Model.Configs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -106,8 +108,9 @@ namespace FewBox.Service.Payment
             // Used for Exception&Log AOP.
             // services.AddScoped<IExceptionHandler, ConsoleExceptionHandler>();
             // services.AddScoped<ITraceHandler, ConsoleTraceHandler>();
-            services.AddScoped<IExceptionHandler, ServiceExceptionHandler>();
-            services.AddScoped<ITraceHandler, ServiceTraceHandler>();
+            services.AddScoped<ILogHandler, ServiceLogHandler>();
+            services.AddScoped<INotificationHandler, ConsoleNotificationHandler>();
+            services.AddScoped<ITryCatchService, TryCatchService>();
             // Used for IHttpContextAccessor&IActionContextAccessor context.
             services.AddHttpContextAccessor();
             services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
