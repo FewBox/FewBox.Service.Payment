@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FewBox.Core.Web" Version="1.0.63" />
+    <PackageReference Include="FewBox.Core.Web" Version="1.0.68" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
     <PackageReference Include="NSwag.AspNetCore" Version="12.2.4" />
@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FewBox.Service.Payment.Model\FewBox.Service.Payment.Model.csproj" />
-    <ProjectReference Include="..\FewBox.Service.Payment.Service\FewBox.Service.Payment.Service.csproj" />
+    <ProjectReference Include="..\FewBox.Service.Payment.Domain\FewBox.Service.Payment.Domain.csproj" />
   </ItemGroup>
 
 </Project>

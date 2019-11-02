@@ -13,21 +13,15 @@ namespace FewBox.Service.Payment.Controllers
     [ApiController]
     public class PaypalController : ControllerBase
     {
-        private IPaymentLogService PaymentLogService { get; set; }
-        private INotificationService NotificationService { get; set; }
-        private IRegistryService RegistryService { get; set; }
         private PaypalConfig PaypalConfig { get; set; }
 
-        public PaypalController(IPaymentLogService paymentLogService, INotificationService notificationService,
-        IRegistryService registryService, PaypalConfig paypalConfig)
+        public PaypalController(PaypalConfig paypalConfig)
         {
-            this.PaymentLogService = paymentLogService;
-            this.NotificationService = notificationService;
-            this.RegistryService = registryService;
             this.PaypalConfig = paypalConfig;
         }
 
         [HttpPost]
+        [Trace]
         public StatusCodeResult Receive()
         {
             var paymentInfo = new PaymentInfo();
@@ -35,7 +29,6 @@ namespace FewBox.Service.Payment.Controllers
 	        {  
 		        paymentInfo.Body = reader.ReadToEnd();
 	        }
-            this.PaymentLogService.Write(paymentInfo);
             using(var httpClient = new HttpClient())
             {
                 httpClient.DefaultRequestHeaders.Accept.Add(
@@ -52,13 +45,10 @@ namespace FewBox.Service.Payment.Controllers
                     // check that Receiver_email is your Primary PayPal email
                     // check that Payment_amount/Payment_currency are correct
                     // process payment
-                    this.NotificationService.Notify(new Notification {});
-                    this.RegistryService.Registry(new Registry{});
                 }
                 else if (responseString.Equals("INVALID"))
                 {
                     //Log for manual investigation
-                    this.NotificationService.Notify(new Notification {});
                 }
                 else
                 {

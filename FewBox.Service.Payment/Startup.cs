@@ -1,57 +1,64 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Text;
+using FewBox.Core.Utility.Formatter;
+using FewBox.Core.Utility.Net;
+using FewBox.Core.Web.Config;
+using FewBox.Core.Web.Error;
 using FewBox.Core.Web.Filter;
+using FewBox.Core.Web.Token;
 using FewBox.Service.Payment.Model.Configs;
-using FewBox.Service.Payment.Model.Service;
-using FewBox.Service.Payment.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
+using NSwag;
+using NSwag.SwaggerGeneration.Processors.Security;
 
 namespace FewBox.Service.Payment
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IHostingEnvironment hostingEnvironment)
         {
             Configuration = configuration;
+            this.HostingEnvironment = hostingEnvironment;
         }
 
         public IConfiguration Configuration { get; }
+        public IHostingEnvironment HostingEnvironment { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            RestfulUtility.IsCertificateNeedValidate = false;
+            RestfulUtility.IsLogging = true; // Todo: Need to remove.
+            JsonUtility.IsCamelCase = true;
+            JsonUtility.IsNullIgnore = true;
+            HttpUtility.IsCertificateNeedValidate = false;
+            HttpUtility.IsEnsureSuccessStatusCode = false;
+            services.AddRouting(options => options.LowercaseUrls = true);
             services.AddMvc(options=>{
-                options.Filters.Add<ExceptionAsyncFilter>();
-                //options.Filters.Add<TransactionAsyncFilter>();
-                options.Filters.Add<TraceAsyncFilter>();
-            }).SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
-            .ConfigureApplicationPartManager(apm =>
-            {
-                var dependentLibrary = apm.ApplicationParts
-                    .FirstOrDefault(part => part.Name == "FewBox.Core.Web");
-                if (dependentLibrary != null)
+                if (this.HostingEnvironment.EnvironmentName != "Test")
                 {
-                    apm.ApplicationParts.Remove(dependentLibrary);
+                    options.Filters.Add<ExceptionAsyncFilter>();
                 }
-            }); // Note: Remove AuthenticationController.
-            services.Configure<RouteOptions>(options=>{
-                options.LowercaseUrls=true;
-            });
-            var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
-            services.AddSingleton(paypalConfig);
-            services.AddScoped<IPaymentLogService, PaymentLogService>();
-            services.AddScoped<IExceptionHandler, ConsoleExceptionHandler>(); // Todo: Change to remote log service.
-            services.AddScoped<ITraceHandler, ConsoleTraceHandler>(); // Todo: Change to remote log service.
+                if (this.HostingEnvironment.EnvironmentName == "Development")
+                {
+                    options.Filters.Add(new AllowAnonymousFilter());
+                }
+                // options.Filters.Add<TransactionAsyncFilter>();
+                options.Filters.Add<TraceAsyncFilter>();
+            })
+            .AddJsonOptions(options=>{
+                options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+            })
+            .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddCors(
                 options =>
                 {
@@ -67,25 +74,89 @@ namespace FewBox.Service.Payment
                         });
 
                 });
+            // services.AddAutoMapper();
+            services.AddMemoryCache();
+            services.AddRouting(options => options.LowercaseUrls = true);
+            services.AddSingleton<IExceptionProcessorService, ExceptionProcessorService>();
+            // Used for Config.
+            // Used for [Authorize(Policy="JWTRole_ControllerAction")].
+            var jwtConfig = this.Configuration.GetSection("JWTConfig").Get<JWTConfig>();
+            services.AddSingleton(jwtConfig);
+            var securityConfig = this.Configuration.GetSection("SecurityConfig").Get<SecurityConfig>();
+            services.AddSingleton(securityConfig);
+            var healthyConfig = this.Configuration.GetSection("HealthyConfig").Get<HealthyConfig>();
+            services.AddSingleton(healthyConfig);
+            var logConfig = this.Configuration.GetSection("LogConfig").Get<LogConfig>();
+            services.AddSingleton(logConfig);
+            var notificationConfig = this.Configuration.GetSection("NotificationConfig").Get<NotificationConfig>();
+            services.AddSingleton(notificationConfig);
+            var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
+            services.AddSingleton(paypalConfig);
+            // Used for RBAC AOP.
+            // services.AddScoped<IAuthorizationHandler, RoleHandler>();
+            // services.AddSingleton<IAuthorizationPolicyProvider, RoleAuthorizationPolicyProvider>();
+            // services.AddScoped<IAuthService, RemoteAuthService>();
+            // Used for ORM.
+            // services.AddScoped<IOrmConfiguration, AppSettingOrmConfiguration>();
+            // services.AddScoped<IOrmSession, MySqlSession>(); // Note: MySql
+            // services.AddScoped<IOrmSession, SQLiteSession>(); // Note: SQLite
+            // services.AddScoped<ICurrentUser<Guid>, CurrentUser<Guid>>();
+            // Used for Application.
+            
+            // Used for Exception&Log AOP.
+            // services.AddScoped<IExceptionHandler, ConsoleExceptionHandler>();
+            // services.AddScoped<ITraceHandler, ConsoleTraceHandler>();
+            services.AddScoped<IExceptionHandler, ServiceExceptionHandler>();
+            services.AddScoped<ITraceHandler, ServiceTraceHandler>();
+            // Used for IHttpContextAccessor&IActionContextAccessor context.
+            services.AddHttpContextAccessor();
+            services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            // Used for JWT.
+            services.AddScoped<ITokenService, JWTToken>();
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = false, // Remove SigningKey validation, change to Auth service.
+                    ValidIssuer = jwtConfig.Issuer,
+                    ValidAudience = jwtConfig.Issuer,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Key))
+                };
+            });
+            // Used for Swagger Open Api Document.
             services.AddOpenApiDocument(config => {
                 config.PostProcess = document =>
                 {
                     document.Info.Version = "v1";
-                    document.Info.Title = "FewBox Payment API";
-                    document.Info.Description = "A simple ASP.NET Core web API";
+                    document.Info.Title = "FewBox Payment Api";
+                    document.Info.Description = "FewBox Payment, for more information please visit the 'https://fewbox.com'";
                     document.Info.TermsOfService = "https://fewbox.com/terms";
                     document.Info.Contact = new NSwag.SwaggerContact
                     {
-                        Name = "XL Pang",
+                        Name = "FewBox",
                         Email = "support@fewbox.com",
                         Url = "https://fewbox.com/support"
                     };
                     document.Info.License = new NSwag.SwaggerLicense
                     {
                         Name = "Use under license",
-                        Url = "https://raw.githubusercontent.com/FewBox/FewBox.Service.Mail/master/LICENSE"
+                        Url = "https://raw.githubusercontent.com/FewBox/FewBox.Service.Payment/master/LICENSE"
                     };
                 };
+                config.OperationProcessors.Add(new OperationSecurityScopeProcessor("JWT"));
+                config.DocumentProcessors.Add(
+                    new SecurityDefinitionAppender("JWT", new List<string>{"API"}, new SwaggerSecurityScheme
+                    {
+                        Type = SwaggerSecuritySchemeType.ApiKey,
+                        Name = "Authorization",
+                        Description = "Bearer [Token]",
+                        In = SwaggerSecurityApiKeyLocation.Header
+                    })
+                );
             });
         }
 
@@ -98,12 +169,11 @@ namespace FewBox.Service.Payment
             }
             else
             {
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
+            //app.UseAuthentication();
             app.UseHttpsRedirection();
-            
             app.UseStaticFiles();
             app.UseSwagger();
             if (env.IsDevelopment() || env.IsStaging())  
@@ -116,7 +186,6 @@ namespace FewBox.Service.Payment
                 app.UseCors("all");
                 app.UseReDoc();
             }
-            app.UseCors();
             app.UseMvc();
         }
     }
