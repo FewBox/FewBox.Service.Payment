@@ -1,7 +1,13 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
+using FewBox.Core.Utility.Net;
+using FewBox.Core.Web.Config;
+using FewBox.Core.Web.Dto;
+using FewBox.Core.Web.Error;
 using FewBox.Core.Web.Filter;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
@@ -14,10 +20,14 @@ namespace FewBox.Service.Payment.Controllers
     public class PaypalController : ControllerBase
     {
         private PaypalConfig PaypalConfig { get; set; }
+        private IExceptionProcessorService ExceptionProcessorService { get; set; }
+        private NotificationConfig NotificationConfig { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig)
+        public PaypalController(PaypalConfig paypalConfig, IExceptionProcessorService exceptionProcessorService, NotificationConfig notificationConfig)
         {
             this.PaypalConfig = paypalConfig;
+            this.ExceptionProcessorService = exceptionProcessorService;
+            this.NotificationConfig = notificationConfig;
         }
 
         [HttpPost]
@@ -25,11 +35,11 @@ namespace FewBox.Service.Payment.Controllers
         public StatusCodeResult Receive()
         {
             var paymentInfo = new PaymentInfo();
-            using(StreamReader reader = new StreamReader(this.Request.Body, Encoding.ASCII))
-	        {  
-		        paymentInfo.Body = reader.ReadToEnd();
-	        }
-            using(var httpClient = new HttpClient())
+            using (StreamReader reader = new StreamReader(this.Request.Body, Encoding.ASCII))
+            {
+                paymentInfo.Body = reader.ReadToEnd();
+            }
+            using (var httpClient = new HttpClient())
             {
                 httpClient.DefaultRequestHeaders.Accept.Add(
                     new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
@@ -54,8 +64,28 @@ namespace FewBox.Service.Payment.Controllers
                 {
                     //Log error
                 }
+                this.SendNotification(responseString,"");
             }
             return Ok();
+        }
+
+        private void SendNotification(string name, string param)
+        {
+            Task.Run(() =>
+            {
+                this.ExceptionProcessorService.TryCatchInConsole(() =>
+                {
+                    RestfulUtility.Post<NotificationRequestDto, NotificationResponseDto>($"{this.NotificationConfig.Protocol}://{this.NotificationConfig.Host}:{this.NotificationConfig.Port}/api/notification", new Package<NotificationRequestDto>
+                    {
+                        Headers = new List<Header> { },
+                        Body = new NotificationRequestDto
+                        {
+                            Name = name,
+                            Param = param
+                        }
+                    });
+                });
+            });
         }
     }
 }
