@@ -1,1 +1,1 @@
-# FewBox.Service.Payment
+[![Build Status](https://travis-ci.com/FewBox/FewBox.Service.Payment.svg?branch=master)](https://travis-ci.com/FewBox/FewBox.Service.Payment)
