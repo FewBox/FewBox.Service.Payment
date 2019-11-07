@@ -9,6 +9,7 @@ using FewBox.Core.Web.Config;
 using FewBox.Core.Web.Dto;
 using FewBox.Core.Web.Error;
 using FewBox.Core.Web.Filter;
+using FewBox.Core.Web.Log;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -20,14 +21,12 @@ namespace FewBox.Service.Payment.Controllers
     public class PaypalController : ControllerBase
     {
         private PaypalConfig PaypalConfig { get; set; }
-        private ITryCatchService TryCatchService { get; set; }
-        private NotificationConfig NotificationConfig { get; set; }
+        private ILogHandler LogHandler { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, ITryCatchService tryCatchService, NotificationConfig notificationConfig)
+        public PaypalController(PaypalConfig paypalConfig, ILogHandler logHandler)
         {
             this.PaypalConfig = paypalConfig;
-            this.TryCatchService = tryCatchService;
-            this.NotificationConfig = notificationConfig;
+            this.LogHandler = logHandler;
         }
 
         [HttpPost]
@@ -64,28 +63,9 @@ namespace FewBox.Service.Payment.Controllers
                 {
                     //Log error
                 }
-                this.SendNotification(responseString,"");
+                this.LogHandler.Handle(responseString, paymentInfo.Body);
             }
             return Ok();
-        }
-
-        private void SendNotification(string name, string param)
-        {
-            Task.Run(() =>
-            {
-                this.TryCatchService.TryCatchWithoutNotification(() =>
-                {
-                    RestfulUtility.Post<NotificationRequestDto, NotificationResponseDto>($"{this.NotificationConfig.Protocol}://{this.NotificationConfig.Host}:{this.NotificationConfig.Port}/api/notification", new Package<NotificationRequestDto>
-                    {
-                        Headers = new List<Header> { },
-                        Body = new NotificationRequestDto
-                        {
-                            Name = name,
-                            Param = param
-                        }
-                    });
-                });
-            });
         }
     }
 }
