@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -53,7 +54,7 @@ namespace FewBox.Service.Payment.Controllers
                     // check that Receiver_email is your Primary PayPal email
                     // check that Payment_amount/Payment_currency are correct
                     // process payment
-                    NameValueCollection qureyParams = new Uri(paymentInfo.Body).ParseQueryString();
+                    NameValueCollection qureyParams = new Uri(WebUtility.UrlDecode(paymentInfo.Body)).ParseQueryString();
                     PaypalContext paypalContext = new PaypalContext(qureyParams);
                     if (paypalContext.PaymentInformation.PaymentStatusType == PaymentStatusType.Completed &&
                     paypalContext.BasicInformation.ReceiverEmail == this.PaypalConfig.ReceiverEmail &&
