@@ -1,15 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Specialized;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using FewBox.Core.Utility.Net;
-using FewBox.Core.Web.Config;
-using FewBox.Core.Web.Dto;
-using FewBox.Core.Web.Error;
 using FewBox.Core.Web.Filter;
 using FewBox.Core.Web.Log;
+using FewBox.Service.Payment.Domain.Services;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -22,11 +19,13 @@ namespace FewBox.Service.Payment.Controllers
     {
         private PaypalConfig PaypalConfig { get; set; }
         private ILogHandler LogHandler { get; set; }
+        private IPaypalService PaypalService { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, ILogHandler logHandler)
+        public PaypalController(PaypalConfig paypalConfig, ILogHandler logHandler, PaypalServiceBuilder paypalServiceBuilder)
         {
             this.PaypalConfig = paypalConfig;
             this.LogHandler = logHandler;
+            this.PaypalService = paypalServiceBuilder.Build();
         }
 
         [HttpPost]
@@ -54,6 +53,14 @@ namespace FewBox.Service.Payment.Controllers
                     // check that Receiver_email is your Primary PayPal email
                     // check that Payment_amount/Payment_currency are correct
                     // process payment
+                    NameValueCollection qureyParams = new Uri(paymentInfo.Body).ParseQueryString();
+                    PaypalContext paypalContext = new PaypalContext(qureyParams);
+                    if (paypalContext.PaymentInformation.PaymentStatusType == PaymentStatusType.Completed &&
+                    paypalContext.BasicInformation.ReceiverEmail == this.PaypalConfig.ReceiverEmail &&
+                    paypalContext.CurrencyAndCurrrencyExchange.MCCurrency == this.PaypalConfig.Currency)
+                    {
+                        this.PaypalService.HandleIPN(paypalContext);
+                    }
                 }
                 else if (responseString.Equals("INVALID"))
                 {

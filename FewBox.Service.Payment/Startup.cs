@@ -8,6 +8,7 @@ using FewBox.Core.Web.Filter;
 using FewBox.Core.Web.Log;
 using FewBox.Core.Web.Notification;
 using FewBox.Core.Web.Token;
+using FewBox.Service.Payment.Domain.Services;
 using FewBox.Service.Payment.Model.Configs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -104,7 +105,7 @@ namespace FewBox.Service.Payment
             // services.AddScoped<IOrmSession, SQLiteSession>(); // Note: SQLite
             // services.AddScoped<ICurrentUser<Guid>, CurrentUser<Guid>>();
             // Used for Application.
-            
+            services.AddSingleton<PaypalServiceBuilder>();
             // Used for Exception&Log AOP.
             // services.AddScoped<ILogHandler, ConsoleLogHandler>();
             // services.AddScoped<INotificationHandler, ConsoleNotificationHandler>();
