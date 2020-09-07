@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/FewBox.Service.Payment/bin/Debug/netcoreapp2.2/FewBox.Service.Payment.dll",
+            "program": "${workspaceFolder}/FewBox.Service.Payment/bin/Debug/netcoreapp3.1/FewBox.Service.Payment.dll",
             "args": [],
             "cwd": "${workspaceFolder}/FewBox.Service.Payment",
             "stopAtEntry": false,

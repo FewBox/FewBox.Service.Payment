@@ -1,42 +1,35 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
-using FewBox.Core.Utility.Net;
-using FewBox.Core.Web.Config;
-using FewBox.Core.Web.Dto;
-using FewBox.Core.Web.Error;
-using FewBox.Core.Web.Filter;
-using FewBox.Core.Web.Log;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace FewBox.Service.Payment.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{v:apiVersion}/[controller]")]
     [ApiController]
     public class PaypalController : ControllerBase
     {
         private PaypalConfig PaypalConfig { get; set; }
-        private ILogHandler LogHandler { get; set; }
+        private ILogger Logger { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, ILogHandler logHandler)
+        public PaypalController(PaypalConfig paypalConfig, ILogger<PaypalController> logger)
         {
             this.PaypalConfig = paypalConfig;
-            this.LogHandler = logHandler;
+            this.Logger = logger;
         }
 
         [HttpPost]
-        [Trace]
-        public StatusCodeResult Receive()
+        public async Task<StatusCodeResult> ReceiveAsync()
         {
             var paymentInfo = new PaymentInfo();
             using (StreamReader reader = new StreamReader(this.Request.Body, Encoding.ASCII))
             {
-                paymentInfo.Body = reader.ReadToEnd();
+                paymentInfo.Body = await reader.ReadToEndAsync();
             }
             using (var httpClient = new HttpClient())
             {
@@ -44,26 +37,36 @@ namespace FewBox.Service.Payment.Controllers
                     new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
                 string content = $"cmd=_notify-validate&{paymentInfo.Body}";
                 var httpContent = new StringContent(content);
-                HttpResponseMessage response = httpClient.PostAsync(this.PaypalConfig.Url, httpContent).Result;
+                HttpResponseMessage response = await httpClient.PostAsync(this.PaypalConfig.Url, httpContent);
                 response.EnsureSuccessStatusCode();
-                string responseString = response.Content.ReadAsStringAsync().Result;
+                string responseString = await response.Content.ReadAsStringAsync();
                 if (responseString.Equals("VERIFIED"))
                 {
+                    this.Logger.LogWarning(paymentInfo.Body);
                     // check that Payment_status=Completed
                     // check that Txn_id has not been previously processed
                     // check that Receiver_email is your Primary PayPal email
                     // check that Payment_amount/Payment_currency are correct
                     // process payment
+                    if (this.Request.Form["payment_status"] == "Completed")
+                    {
+                        if (this.Request.Form["receiver_email"] == this.PaypalConfig.Email && this.Request.Form["mc_currency"] == "USD")
+                        {
+                            // payer_email
+                        }
+                    }
                 }
                 else if (responseString.Equals("INVALID"))
                 {
-                    //Log for manual investigation
+                    this.Logger.LogError(paymentInfo.Body);
+                    return Unauthorized();
                 }
                 else
                 {
-                    //Log error
+                    this.Logger.LogError(responseString);
+                    return BadRequest();
                 }
-                this.LogHandler.Handle(responseString, paymentInfo.Body);
+                this.Logger.LogTrace(@"{0}: {1}", paymentInfo.Body, responseString);
             }
             return Ok();
         }

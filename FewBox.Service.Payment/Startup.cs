@@ -1,195 +1,114 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using FewBox.Core.Utility.Formatter;
-using FewBox.Core.Utility.Net;
-using FewBox.Core.Web.Config;
-using FewBox.Core.Web.Error;
-using FewBox.Core.Web.Filter;
-using FewBox.Core.Web.Log;
-using FewBox.Core.Web.Notification;
-using FewBox.Core.Web.Token;
-using FewBox.Service.Payment.Model.Configs;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using FewBox.Service.Payment.Model.Configs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Authorization;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
+using FewBox.Core.Web.Extension;
+using NSwag.Generation.AspNetCore;
+using NSwag.Generation.Processors.Security;
+using Microsoft.Extensions.Hosting;
 using NSwag;
-using NSwag.SwaggerGeneration.Processors.Security;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FewBox.Service.Payment
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration, IHostingEnvironment hostingEnvironment)
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment hostingEnvironment)
         {
             Configuration = configuration;
             this.HostingEnvironment = hostingEnvironment;
         }
 
         public IConfiguration Configuration { get; }
-        public IHostingEnvironment HostingEnvironment { get; }
+        public IWebHostEnvironment HostingEnvironment { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            RestfulUtility.IsCertificateNeedValidate = false;
-            RestfulUtility.IsLogging = true; // Todo: Need to remove.
-            JsonUtility.IsCamelCase = true;
-            JsonUtility.IsNullIgnore = true;
-            HttpUtility.IsCertificateNeedValidate = false;
-            HttpUtility.IsEnsureSuccessStatusCode = false;
-            services.AddRouting(options => options.LowercaseUrls = true);
-            services.AddMvc(options=>{
-                if (this.HostingEnvironment.EnvironmentName != "Test")
-                {
-                    options.Filters.Add<ExceptionAsyncFilter>();
-                }
-                if (this.HostingEnvironment.EnvironmentName == "Development")
-                {
-                    options.Filters.Add(new AllowAnonymousFilter());
-                }
-                // options.Filters.Add<TransactionAsyncFilter>();
-                options.Filters.Add<TraceAsyncFilter>();
-            })
-            .AddJsonOptions(options=>{
-                options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-            })
-            .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-            services.AddCors(
-                options =>
-                {
-                    options.AddDefaultPolicy(
-                        builder =>
-                        {
-                            builder.SetIsOriginAllowedToAllowWildcardSubdomains().WithOrigins("https://fewbox.com").AllowAnyMethod().AllowAnyHeader();
-                        });
-                    options.AddPolicy("all",
-                        builder =>
-                        {
-                            builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-                        });
-
-                });
-            // services.AddAutoMapper();
-            services.AddMemoryCache();
-            services.AddRouting(options => options.LowercaseUrls = true);
-            services.AddSingleton<IExceptionProcessorService, ExceptionProcessorService>();
-            // Used for Config.
-            // Used for [Authorize(Policy="JWTRole_ControllerAction")].
-            var jwtConfig = this.Configuration.GetSection("JWTConfig").Get<JWTConfig>();
-            services.AddSingleton(jwtConfig);
-            var securityConfig = this.Configuration.GetSection("SecurityConfig").Get<SecurityConfig>();
-            services.AddSingleton(securityConfig);
-            var healthyConfig = this.Configuration.GetSection("HealthyConfig").Get<HealthyConfig>();
-            services.AddSingleton(healthyConfig);
-            var logConfig = this.Configuration.GetSection("LogConfig").Get<LogConfig>();
-            services.AddSingleton(logConfig);
-            var notificationConfig = this.Configuration.GetSection("NotificationConfig").Get<NotificationConfig>();
-            services.AddSingleton(notificationConfig);
+            services.AddFewBox(FewBoxDBType.None, new ApiVersion(1, 0, "alpha1"));
             var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
             services.AddSingleton(paypalConfig);
-            // Used for RBAC AOP.
-            // services.AddScoped<IAuthorizationHandler, RoleHandler>();
-            // services.AddSingleton<IAuthorizationPolicyProvider, RoleAuthorizationPolicyProvider>();
-            // services.AddScoped<IAuthService, RemoteAuthService>();
-            // Used for ORM.
-            // services.AddScoped<IOrmConfiguration, AppSettingOrmConfiguration>();
-            // services.AddScoped<IOrmSession, MySqlSession>(); // Note: MySql
-            // services.AddScoped<IOrmSession, SQLiteSession>(); // Note: SQLite
-            // services.AddScoped<ICurrentUser<Guid>, CurrentUser<Guid>>();
-            // Used for Application.
-            
-            // Used for Exception&Log AOP.
-            // services.AddScoped<ILogHandler, ConsoleLogHandler>();
-            // services.AddScoped<INotificationHandler, ConsoleNotificationHandler>();
-            services.AddScoped<ILogHandler, ServiceLogHandler>();
-            services.AddScoped<INotificationHandler, ServiceNotificationHandler>();
-            services.AddScoped<ITryCatchService, TryCatchService>();
-            // Used for IHttpContextAccessor&IActionContextAccessor context.
-            services.AddHttpContextAccessor();
-            services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
-            // Used for JWT.
-            services.AddScoped<ITokenService, JWTToken>();
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+            services.AddOpenApiDocument(config =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = false, // Remove SigningKey validation, change to Auth service.
-                    ValidIssuer = jwtConfig.Issuer,
-                    ValidAudience = jwtConfig.Issuer,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Key))
-                };
-            });
-            // Used for Swagger Open Api Document.
-            services.AddOpenApiDocument(config => {
-                config.PostProcess = document =>
-                {
-                    document.Info.Version = "v1";
-                    document.Info.Title = "FewBox Payment Api";
-                    document.Info.Description = "FewBox Payment, for more information please visit the 'https://fewbox.com'";
-                    document.Info.TermsOfService = "https://fewbox.com/terms";
-                    document.Info.Contact = new NSwag.SwaggerContact
-                    {
-                        Name = "FewBox",
-                        Email = "support@fewbox.com",
-                        Url = "https://fewbox.com/support"
-                    };
-                    document.Info.License = new NSwag.SwaggerLicense
-                    {
-                        Name = "Use under license",
-                        Url = "https://raw.githubusercontent.com/FewBox/FewBox.Service.Payment/master/LICENSE"
-                    };
-                };
-                config.OperationProcessors.Add(new OperationSecurityScopeProcessor("JWT"));
-                config.DocumentProcessors.Add(
-                    new SecurityDefinitionAppender("JWT", new List<string>{"API"}, new SwaggerSecurityScheme
-                    {
-                        Type = SwaggerSecuritySchemeType.ApiKey,
-                        Name = "Authorization",
-                        Description = "Bearer [Token]",
-                        In = SwaggerSecurityApiKeyLocation.Header
-                    })
-                );
+                this.InitAspNetCoreOpenApiDocumentGeneratorSettings(config, "v1", new[] { "1-alpha1", "1-beta1", "1" }, "v1");
             });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseHttpsRedirection();
+            app.UseRouting();
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.UseOpenApi();
+            app.UseStaticFiles();
             if (env.IsDevelopment())
             {
+                app.UseCors("dev");
+                app.UseSwaggerUi3();
                 app.UseDeveloperExceptionPage();
             }
             else
             {
+                app.UseCors();
+            }
+            if (env.IsStaging())
+            {
+                app.UseSwaggerUi3();
+                app.UseDeveloperExceptionPage();
+            }
+            if (env.IsProduction())
+            {
+                app.UseReDoc(c => c.DocumentPath = "/swagger/v1/swagger.json");
                 app.UseHsts();
             }
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+        }
 
-            //app.UseAuthentication();
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
-            app.UseSwagger();
-            if (env.IsDevelopment() || env.IsStaging())  
+        private void InitAspNetCoreOpenApiDocumentGeneratorSettings(AspNetCoreOpenApiDocumentGeneratorSettings config, string documentName, string[] apiGroupNames, string documentVersion)
+        {
+            config.DocumentName = documentName;
+            config.ApiGroupNames = apiGroupNames;
+            config.PostProcess = document =>
             {
-                app.UseCors("all");
-                app.UseSwaggerUi3();  
-            }
-            else
+                this.InitDocumentInfo(document, documentVersion);
+            };
+            config.OperationProcessors.Add(new OperationSecurityScopeProcessor("JWT"));
+            config.DocumentProcessors.Add(
+                new SecurityDefinitionAppender("JWT", new OpenApiSecurityScheme
+                {
+                    Type = OpenApiSecuritySchemeType.ApiKey,
+                    Name = "Authorization",
+                    Description = "Bearer [Token]",
+                    In = OpenApiSecurityApiKeyLocation.Header
+                })
+            );
+        }
+
+        private void InitDocumentInfo(OpenApiDocument document, string version)
+        {
+            document.Info.Version = version;
+            document.Info.Title = "FewBox Payment Api";
+            document.Info.Description = "FewBox Payment, for more information please visit the 'https://fewbox.com'";
+            document.Info.TermsOfService = "https://fewbox.com/terms";
+            document.Info.Contact = new OpenApiContact
             {
-                app.UseCors("all");
-                app.UseReDoc();
-            }
-            app.UseMvc();
+                Name = "FewBox",
+                Email = "support@fewbox.com",
+                Url = "https://fewbox.com/support"
+            };
+            document.Info.License = new OpenApiLicense
+            {
+                Name = "Use under license",
+                Url = "https://fewbox.com/license"
+
+            };
         }
     }
 }
