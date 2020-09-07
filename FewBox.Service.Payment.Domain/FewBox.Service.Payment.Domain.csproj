@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\FewBox.Service.Payment.Model\FewBox.Service.Payment.Model.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FewBox.Core.Web" Version="1.0.88" />
+    <ProjectReference Include="..\FewBox.Service.Payment.Model\FewBox.Service.Payment.Model.csproj" />
+  </ItemGroup>
 
 </Project>

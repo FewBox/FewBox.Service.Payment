@@ -1,4 +1,4 @@
-﻿using FewBox.Service.Payment.Model.Configs;
+﻿﻿using FewBox.Service.Payment.Model.Configs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +9,7 @@ using NSwag.Generation.Processors.Security;
 using Microsoft.Extensions.Hosting;
 using NSwag;
 using Microsoft.AspNetCore.Mvc;
+using FewBox.Service.Payment.Domain.Services;
 
 namespace FewBox.Service.Payment
 {
@@ -30,6 +31,8 @@ namespace FewBox.Service.Payment
             services.AddFewBox(FewBoxDBType.None, new ApiVersion(1, 0, "alpha1"));
             var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
             services.AddSingleton(paypalConfig);
+            // Biz
+            services.AddScoped<PaypalServiceBuilder>();
             services.AddOpenApiDocument(config =>
             {
                 this.InitAspNetCoreOpenApiDocumentGeneratorSettings(config, "v1", new[] { "1-alpha1", "1-beta1", "1" }, "v1");

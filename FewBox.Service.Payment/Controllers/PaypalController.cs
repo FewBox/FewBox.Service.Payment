@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System.Collections.Specialized;
+using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using FewBox.Service.Payment.Domain.Services;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
 using Microsoft.AspNetCore.Mvc;
@@ -16,11 +19,13 @@ namespace FewBox.Service.Payment.Controllers
     {
         private PaypalConfig PaypalConfig { get; set; }
         private ILogger Logger { get; set; }
+        private IPaypalService PaypalService { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, ILogger<PaypalController> logger)
+        public PaypalController(PaypalConfig paypalConfig, ILogger<PaypalController> logger, PaypalServiceBuilder paypalServiceBuilder)
         {
             this.PaypalConfig = paypalConfig;
             this.Logger = logger;
+            this.PaypalService = paypalServiceBuilder.Build();
         }
 
         [HttpPost]
@@ -42,18 +47,18 @@ namespace FewBox.Service.Payment.Controllers
                 string responseString = await response.Content.ReadAsStringAsync();
                 if (responseString.Equals("VERIFIED"))
                 {
-                    this.Logger.LogWarning(paymentInfo.Body);
                     // check that Payment_status=Completed
                     // check that Txn_id has not been previously processed
                     // check that Receiver_email is your Primary PayPal email
                     // check that Payment_amount/Payment_currency are correct
                     // process payment
-                    if (this.Request.Form["payment_status"] == "Completed")
+                    NameValueCollection qureyParams = System.Web.HttpUtility.ParseQueryString(WebUtility.UrlDecode(paymentInfo.Body));
+                    PaypalContext paypalContext = new PaypalContext(qureyParams);
+                    if (paypalContext.PaymentInformation.PaymentStatusType == PaymentStatusType.Completed &&
+                    paypalContext.BasicInformation.ReceiverEmail == this.PaypalConfig.ReceiverEmail &&
+                    paypalContext.CurrencyAndCurrrencyExchange.MCCurrency == this.PaypalConfig.Currency)
                     {
-                        if (this.Request.Form["receiver_email"] == this.PaypalConfig.Email && this.Request.Form["mc_currency"] == "USD")
-                        {
-                            // payer_email
-                        }
+                        this.PaypalService.HandleIPN(paypalContext);
                     }
                 }
                 else if (responseString.Equals("INVALID"))
