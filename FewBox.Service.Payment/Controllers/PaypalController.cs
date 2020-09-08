@@ -53,7 +53,7 @@ namespace FewBox.Service.Payment.Controllers
                 response.EnsureSuccessStatusCode();
                 string responseString = await response.Content.ReadAsStringAsync();
                 this.Logger.LogTrace(@"{0}: {1}", paymentInfo.Body, responseString);
-                this.MailService.OpsNotification(responseString, responseString, new List<string> { this.FewBoxSDKConfig.OpsEmail });
+                this.MailService.OpsNotification(responseString, paymentInfo.Body, new List<string> { this.FewBoxSDKConfig.OpsEmail });
                 if (responseString.Equals("VERIFIED"))
                 {
                     // check that Payment_status=Completed
@@ -68,6 +68,10 @@ namespace FewBox.Service.Payment.Controllers
                     paypalContext.CurrencyAndCurrrencyExchange.MCCurrency == this.PaypalConfig.Currency)
                     {
                         this.PaypalService.HandleIPN(paypalContext);
+                    }
+                    else
+                    {
+                        return Unauthorized();
                     }
                 }
                 else if (responseString.Equals("INVALID"))
