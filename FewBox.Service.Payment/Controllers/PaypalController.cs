@@ -1,10 +1,13 @@
-﻿using System.Collections.Specialized;
+﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using FewBox.SDK.Config;
+using FewBox.SDK.Mail;
 using FewBox.Service.Payment.Domain.Services;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
@@ -20,11 +23,15 @@ namespace FewBox.Service.Payment.Controllers
         private PaypalConfig PaypalConfig { get; set; }
         private ILogger Logger { get; set; }
         private IPaypalService PaypalService { get; set; }
+        private IMailService MailService { get; set; }
+        private FewBoxSDKConfig FewBoxSDKConfig { get; set; }
 
-        public PaypalController(PaypalConfig paypalConfig, ILogger<PaypalController> logger, PaypalServiceBuilder paypalServiceBuilder)
+        public PaypalController(PaypalConfig paypalConfig, ILogger<PaypalController> logger, IMailService mailService, FewBoxSDKConfig fewBoxSDKConfig, PaypalServiceBuilder paypalServiceBuilder)
         {
             this.PaypalConfig = paypalConfig;
             this.Logger = logger;
+            this.MailService = mailService;
+            this.FewBoxSDKConfig = fewBoxSDKConfig;
             this.PaypalService = paypalServiceBuilder.Build();
         }
 
@@ -45,6 +52,8 @@ namespace FewBox.Service.Payment.Controllers
                 HttpResponseMessage response = await httpClient.PostAsync(this.PaypalConfig.Url, httpContent);
                 response.EnsureSuccessStatusCode();
                 string responseString = await response.Content.ReadAsStringAsync();
+                this.Logger.LogTrace(@"{0}: {1}", paymentInfo.Body, responseString);
+                this.MailService.OpsNotification(responseString, responseString, new List<string> { this.FewBoxSDKConfig.OpsEmail });
                 if (responseString.Equals("VERIFIED"))
                 {
                     // check that Payment_status=Completed
@@ -71,7 +80,6 @@ namespace FewBox.Service.Payment.Controllers
                     this.Logger.LogError(responseString);
                     return BadRequest();
                 }
-                this.Logger.LogTrace(@"{0}: {1}", paymentInfo.Body, responseString);
             }
             return Ok();
         }

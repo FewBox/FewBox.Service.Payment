@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FewBox.Core.Web.Extension;
+using FewBox.SDK.Extension;
 using NSwag.Generation.AspNetCore;
 using NSwag.Generation.Processors.Security;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +30,7 @@ namespace FewBox.Service.Payment
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddFewBox(FewBoxDBType.None, new ApiVersion(1, 0, "alpha1"));
+            services.AddFewBoxSDK();
             var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
             services.AddSingleton(paypalConfig);
             // Biz

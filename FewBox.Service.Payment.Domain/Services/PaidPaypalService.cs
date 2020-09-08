@@ -1,5 +1,5 @@
-﻿using System.Security.Cryptography;
-using FewBox.Core.Web.Notification;
+﻿using System.Collections.Generic;
+using FewBox.SDK.Mail;
 using FewBox.Service.Payment.Model.Configs;
 using FewBox.Service.Payment.Model.Service;
 
@@ -7,17 +7,17 @@ namespace FewBox.Service.Payment.Domain.Services
 {
     class PaidPaypalService : PaypalService
     {
-        private INotificationHandler NotificationHandler { get; set; }
-        public PaidPaypalService(PaypalConfig paypalConfig, INotificationHandler notificationHandler) : base(paypalConfig)
+        private IMailService MailService { get; set; }
+        public PaidPaypalService(PaypalConfig paypalConfig, IMailService mailService) : base(paypalConfig)
         {
-            this.NotificationHandler = notificationHandler;
+            this.MailService = mailService;
         }
         public override void HandleIPN(PaypalContext paypalContext)
         {
-            if(paypalContext.PaymentInformation.PaymentStatusType==PaymentStatusType.Completed)
+            if (paypalContext.PaymentInformation.PaymentStatusType == PaymentStatusType.Completed)
             {
-            RSA rsa = RSA.Create();
-            this.NotificationHandler.Handle("License", "");
+                //RSA rsa = RSA.Create();
+                this.MailService.OpsNotification("License", "XXX", new List<string> { paypalContext.BuyerInformation.PayerEmail });
             }
             else
             {
