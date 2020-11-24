@@ -17,7 +17,7 @@ namespace FewBox.Service.Payment.Domain.Services
             if (paypalContext.PaymentInformation.PaymentStatusType == PaymentStatusType.Completed)
             {
                 //RSA rsa = RSA.Create();
-                this.MailService.OpsNotification("License", "XXX", new List<string> { paypalContext.BuyerInformation.PayerEmail });
+                this.MailService.SendOpsNotification("License", "XXX", new List<string> { paypalContext.BuyerInformation.PayerEmail });
             }
             else
             {

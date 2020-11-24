@@ -30,7 +30,7 @@ namespace FewBox.Service.Payment
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddFewBox(FewBoxDBType.None, new ApiVersion(1, 0, "alpha1"));
-            services.AddFewBoxSDK();
+            services.AddFewBoxSDK(FewBoxIntegrationType.MessageQueue);
             var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
             services.AddSingleton(paypalConfig);
             // Biz

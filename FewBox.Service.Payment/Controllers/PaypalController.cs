@@ -53,7 +53,7 @@ namespace FewBox.Service.Payment.Controllers
                 response.EnsureSuccessStatusCode();
                 string responseString = await response.Content.ReadAsStringAsync();
                 this.Logger.LogTrace(@"{0}: {1}", paymentInfo.Body, responseString);
-                this.MailService.OpsNotification(responseString, paymentInfo.Body, new List<string> { this.FewBoxSDKConfig.OpsEmail });
+                this.MailService.SendOpsNotification(responseString, paymentInfo.Body, new List<string> { this.FewBoxSDKConfig.OpsEmail });
                 if (responseString.Equals("VERIFIED"))
                 {
                     // check that Payment_status=Completed
