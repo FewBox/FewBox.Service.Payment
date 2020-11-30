@@ -29,7 +29,7 @@ namespace FewBox.Service.Payment
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddFewBox(FewBoxDBType.None, new ApiVersion(1, 0, "alpha1"));
+            services.AddFewBox(FewBoxDBType.None, FewBoxAuthType.Payload, new ApiVersion(1, 0, "alpha1"));
             services.AddFewBoxSDK(FewBoxIntegrationType.MessageQueue);
             var paypalConfig = this.Configuration.GetSection("PaypalConfig").Get<PaypalConfig>();
             services.AddSingleton(paypalConfig);
