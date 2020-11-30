@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FewBox.Core.Web" Version="1.0.90" />
-    <PackageReference Include="FewBox.SDK" Version="0.0.4" />
+    <PackageReference Include="FewBox.Core.Web" Version="1.0.96" />
+    <PackageReference Include="FewBox.SDK" Version="0.0.9" />
     <ProjectReference Include="..\FewBox.Service.Payment.Model\FewBox.Service.Payment.Model.csproj" />
   </ItemGroup>
 
