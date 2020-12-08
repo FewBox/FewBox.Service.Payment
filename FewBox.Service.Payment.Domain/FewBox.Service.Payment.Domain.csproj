@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="FewBox.Core.Web" Version="1.0.96" />
-    <PackageReference Include="FewBox.SDK" Version="0.0.9" />
+    <PackageReference Include="FewBox.SDK" Version="0.0.17" />
     <ProjectReference Include="..\FewBox.Service.Payment.Model\FewBox.Service.Payment.Model.csproj" />
   </ItemGroup>
 

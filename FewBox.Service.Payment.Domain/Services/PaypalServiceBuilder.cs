@@ -22,8 +22,8 @@ namespace FewBox.Service.Payment.Domain.Services
 
         public IPaypalService Build()
         {
-            IPaypalService paidPaypalService = new PaidPaypalService(this.PaypalConfig, this.MailService, this.PlanService);
-            IPaypalService refundPaypalService = new RefundPaypalService(this.PaypalConfig, this.MailService, this.PlanService);
+            IPaypalService paidPaypalService = new PaidPaypalService(this.PaypalConfig, this.MailService, this.PlanService, this.Logger);
+            IPaypalService refundPaypalService = new RefundPaypalService(this.PaypalConfig, this.MailService, this.PlanService, this.Logger);
             IPaypalService endPaypalService = new EndPaypalService(this.PaypalConfig, this.MailService, this.PlanService, this.Logger);
             paidPaypalService.Approver = refundPaypalService;
             refundPaypalService.Approver = endPaypalService;

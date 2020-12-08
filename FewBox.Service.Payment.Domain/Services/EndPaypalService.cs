@@ -8,9 +8,8 @@ namespace FewBox.Service.Payment.Domain.Services
 {
     class EndPaypalService : PaypalService
     {
-        private ILogger Logger { get; set; }
         public EndPaypalService(PaypalConfig paypalConfig, IMailService mailService, IPlanService planService, ILogger logger)
-        : base(paypalConfig, mailService, planService)
+        : base(paypalConfig, mailService, planService, logger)
         {
             this.Logger = logger;
         }
